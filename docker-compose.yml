@@ -1,0 +1,35 @@
+services:
+  mini:
+    build:
+      context: .
+      args:
+        BASE: "${BASE_IMAGE:-fs-smartcctv-pep-demo-live:bundle-gpu}"
+    image: smartcctv-mini:latest
+    container_name: smartcctv_mini
+    ports:
+      - "${MINI_BIND:-0.0.0.0}:${MINI_PORT:-8090}:8090"
+    environment:
+      CCTV_1_URL: "${CCTV_1_URL:?Set CCTV_1_URL in .env}"
+      CCTV_1_NAME: "${CCTV_1_NAME:-CCTV 1}"
+      CCTV_2_URL: "${CCTV_2_URL:?Set CCTV_2_URL in .env}"
+      CCTV_2_NAME: "${CCTV_2_NAME:-CCTV 2}"
+      CCTV_1_AI_ENABLED: "${CCTV_1_AI_ENABLED:-true}"
+      CCTV_2_AI_ENABLED: "${CCTV_2_AI_ENABLED:-true}"
+      CCTV_1_APD_MASK: "${CCTV_1_APD_MASK:-}"
+      CCTV_2_APD_MASK: "${CCTV_2_APD_MASK:-}"
+      CCTV_1_APD_PENUTUP: "${CCTV_1_APD_PENUTUP:-}"
+      CCTV_2_APD_PENUTUP: "${CCTV_2_APD_PENUTUP:-}"
+      CCTV_1_VEHICLE_PROFILE: "${CCTV_1_VEHICLE_PROFILE:-}"
+      CCTV_2_VEHICLE_PROFILE: "${CCTV_2_VEHICLE_PROFILE:-}"
+      CCTV_SAMPLE_SECONDS: "${CCTV_SAMPLE_SECONDS:-2}"
+      APD_SAMPLE_INTERVAL_SECONDS: "${APD_SAMPLE_INTERVAL_SECONDS:-0}"
+      CCTV_STALE_SECONDS: "${CCTV_STALE_SECONDS:-30}"
+      CCTV_RECONNECT_SECONDS: "${CCTV_RECONNECT_SECONDS:-5}"
+      CCTV_TIMEOUT_SECONDS: "${CCTV_TIMEOUT_SECONDS:-10}"
+      INFERENCE_DEVICE: "${INFERENCE_DEVICE:-cpu}"
+      # Detection only: nothing is stored or sent anywhere.
+      DETECTION_PERSIST_ENABLED: "false"
+      OPENCV_FFMPEG_CAPTURE_OPTIONS: "rtsp_transport;tcp"
+      OPENCV_LOG_LEVEL: "SILENT"
+      OPENCV_FFMPEG_LOGLEVEL: "-8"
+    restart: unless-stopped

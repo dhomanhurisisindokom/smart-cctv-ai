@@ -1,0 +1,15 @@
+# NVIDIA GPU host (A100): same cadence as the main project's GPU setup.
+services:
+  mini:
+    environment:
+      INFERENCE_DEVICE: cuda
+      CCTV_SAMPLE_SECONDS: "${CCTV_SAMPLE_SECONDS_GPU:-0.12}"
+      APD_SAMPLE_INTERVAL_SECONDS: "${APD_SAMPLE_INTERVAL_SECONDS_GPU:-0.12}"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # "all": on MIG/vGPU hosts count 1 only hands over the parent GPU.
+              count: all
+              capabilities: [gpu]
