@@ -1,0 +1,107 @@
+@model List<Camera>
+@{
+    ViewBag.Title = "Pengaturan";
+    ViewBag.Active = "settings";
+    var freeSlot = (int?)ViewBag.FreeSlot;
+    var json = new System.Web.Script.Serialization.JavaScriptSerializer();
+}
+<div style="margin-bottom:24px;"><h2 style="font-size:18.4px;font-weight:700;margin:0;">Pengaturan</h2></div>
+<section class="panel">
+  <div class="panel-head">
+    <h2>Kelola Kamera</h2>
+    @if (freeSlot.HasValue)
+    {
+      <button type="button" class="action-btn" data-template="camera-form"
+              data-values="@json.Serialize(new { id = freeSlot.Value, title = "Tambah Kamera", name = "", location = "", apd = true, vehicle = false, hasRtsp = false })">+ Tambah Kamera</button>
+    }
+  </div>
+  @if (Model.Count == 0)
+  {
+    <div class="empty">Belum ada kamera.</div>
+  }
+  else
+  {
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Nama</th><th>IP</th><th>Lokasi</th><th>Kategori</th><th>Stream</th><th></th></tr></thead>
+      <tbody>
+      @foreach (var c in Model)
+      {
+        <tr>
+          <td>@c.Name</td>
+          <td class="mono">@(c.Host ?? "–")</td>
+          <td>@c.Location</td>
+          <td>
+            @if (!c.AiEnabled) { <span class="badge b-muted">AI nonaktif</span> }
+            else
+            {
+              if (c.ApdEnabled) { <span class="badge b-apd">APD</span> }
+              if (c.VehicleEnabled) { <span class="badge b-veh">Vehicle</span> }
+            }
+          </td>
+          <td><span class="badge b-muted" data-ai-status="@c.Id">@(c.AiEnabled ? "…" : "–")</span></td>
+          <td>
+            <button type="button" class="link-btn" data-template="camera-form"
+                    data-values="@json.Serialize(new { id = c.Id, title = "Edit — " + c.Name, name = c.Name, location = c.Location, apd = c.ApdEnabled, vehicle = c.VehicleEnabled, hasRtsp = !string.IsNullOrEmpty(c.RtspUrl), rtspHost = c.Host, apdMask = c.ApdMask, apdPenutup = c.ApdPenutup, vehicleProfile = c.VehicleProfile, canDelete = true })">Edit</button>
+          </td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+  }
+</section>
+<p class="hint" style="margin-top:12px">Layanan AI punya 2 slot kamera. Perubahan kamera dibaca ulang oleh layanan AI dalam ±15 detik; setelah itu model dimuat ulang (±1–2 menit).</p>
+
+<template id="camera-form" data-width="460">
+  <div class="modal-head">
+    <h3 data-text="title"></h3>
+    <button type="button" class="modal-close" data-close aria-label="Tutup">&times;</button>
+  </div>
+  <form method="post" action="@Url.Action("Save")">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id">
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:13.6px;">
+      <div class="field"><label class="top" for="camName">Nama Kamera</label><input type="text" id="camName" name="name" maxlength="64" required autofocus></div>
+      <div class="field"><label class="top" for="camLoc">Lokasi</label><input type="text" id="camLoc" name="location" maxlength="128"></div>
+      <div class="field">
+        <div class="top" style="font-size:12.5px;font-weight:600;color:#61686F;margin-bottom:4.8px;">Deteksi aktif</div>
+        <div style="display:flex;gap:22.4px;padding:4.8px 0;">
+          <label class="check"><input type="checkbox" name="apd" value="true"> APD Detection</label>
+          <label class="check"><input type="checkbox" name="vehicle" value="true"> Vehicle Violation</label>
+        </div>
+        <div class="hint">Model AI yang dijalankan di kamera ini. Kamera tampil di halaman APD dan Vehicle; alert-nya tetap terpisah per jenis. Kosongkan keduanya untuk mematikan AI di kamera ini.</div>
+      </div>
+      <div class="field">
+        <label class="top" for="camRtsp">RTSP URL</label>
+        <input type="text" id="camRtsp" name="rtsp" maxlength="500" autocomplete="off" placeholder="rtsp://user:pass@192.168.56.110:554/stream1">
+        <div class="hint" data-show-if="hasRtsp">URL tersimpan (host <span class="mono" data-text="rtspHost"></span>) tidak ditampilkan karena berisi kata sandi. Kosongkan untuk tetap memakai URL tersimpan.
+          <label class="check" style="margin-top:6px;font-size:12.5px"><input type="checkbox" name="clearRtsp" value="true"> Hapus RTSP URL</label></div>
+      </div>
+      <details>
+        <summary style="font-size:12.5px;font-weight:600;color:#61686F;cursor:pointer">Lanjutan (area mask & profil)</summary>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:10px">
+          <div class="field"><label class="top" for="camMask">APD mask</label><input type="text" id="camMask" name="apdMask" maxlength="200" placeholder="masks/posluar_1080p.json"></div>
+          <div class="field"><label class="top" for="camPenutup">APD seragam penutup</label><input type="text" id="camPenutup" name="apdPenutup" maxlength="200"></div>
+          <div class="field"><label class="top" for="camProfile">Profil vehicle</label><input type="text" id="camProfile" name="vehicleProfile" maxlength="64" placeholder="pos_arah_luar_1080p">
+            <div class="hint">Tanpa profil, kamera hanya menampilkan deteksi objek (tanpa alarm pelanggaran kendaraan).</div></div>
+        </div>
+      </details>
+    </div>
+    <div class="modal-foot">
+      <button type="submit" form="camera-delete" class="btn-quiet danger" data-show-if="canDelete" onclick="return confirm('Hapus kamera ini?')">Hapus Kamera</button>
+      <div style="display:flex;gap:9.6px;margin-left:auto">
+        <button type="button" class="btn-secondary" data-close>Batal</button>
+        <button type="submit" class="btn-primary">Simpan Perubahan</button>
+      </div>
+    </div>
+  </form>
+  <form id="camera-delete" method="post" action="@Url.Action("Delete")">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id">
+  </form>
+</template>
+
+@section Scripts {
+<script>window.MINI_AI = { url: '@Config.AiPublicUrl', port: '@Config.AiPublicPort', token: '@StreamToken.Create(TimeSpan.FromHours(1))' };</script>
+}

@@ -1,0 +1,79 @@
+@model List<User>
+@{
+    ViewBag.Title = "Manajemen User";
+    ViewBag.Active = "admin";
+    var me = (SessionUser)ViewBag.User;
+    var json = new System.Web.Script.Serialization.JavaScriptSerializer();
+}
+<div class="page-head">
+  <h2>Manajemen User</h2>
+  <p>Akun yang bisa masuk ke Smart CCTV AI. Admin mengelola kamera dan user; supervisor dan operator menangani kasus.</p>
+</div>
+<section class="panel">
+  <div class="panel-head">
+    <h2>User Platform</h2>
+    <button type="button" class="action-btn" data-template="user-new">+ Tambah User</button>
+  </div>
+  <div class="table-wrap">
+    <table style="min-width:720px">
+      <thead><tr><th>Username</th><th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th>Login Terakhir</th><th></th></tr></thead>
+      <tbody>
+      @foreach (var u in Model)
+      {
+        <tr>
+          <td class="mono">@u.Username</td>
+          <td>@u.FullName</td>
+          <td>@u.Email</td>
+          <td><span class="badge @(u.Role == "admin" ? "b-warning" : u.Role == "supervisor" ? "b-success" : "b-muted")">@u.Role</span></td>
+          <td><span class="badge @(u.IsActive ? "b-success" : "b-muted")">@(u.IsActive ? "Aktif" : "Nonaktif")</span></td>
+          <td class="mono" style="font-size:12.5px;color:#61686F">@(u.LastLoginAt.HasValue ? Fmt.Short(u.LastLoginAt.Value) : "–")</td>
+          <td style="white-space:nowrap">
+            <button type="button" class="link-btn" data-template="user-edit"
+                    data-values="@json.Serialize(new { id = u.Id, username = u.Username, fullName = u.FullName, email = u.Email, role = u.Role })">Edit</button>
+            @if (u.Id != me.Id)
+            {
+              using (Html.BeginForm("Toggle", "Admin", new { id = u.Id }, FormMethod.Post, new { @class = "inline" }))
+              {
+                @Html.AntiForgeryToken()
+                <button type="submit" class="link-btn">@(u.IsActive ? "Nonaktifkan" : "Aktifkan")</button>
+              }
+            }
+          </td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<template id="user-new" data-width="440">
+  <div class="modal-head"><h3>Tambah User</h3><button type="button" class="modal-close" data-close aria-label="Tutup">&times;</button></div>
+  <form method="post" action="@Url.Action("Create")">
+    @Html.AntiForgeryToken()
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:13.6px;">
+      <div class="field"><label class="top" for="uName">Username</label><input type="text" id="uName" name="username" maxlength="64" pattern="[A-Za-z0-9._\-]+" required autofocus autocomplete="off"></div>
+      <div class="field"><label class="top" for="uFull">Nama</label><input type="text" id="uFull" name="fullName" maxlength="128" required></div>
+      <div class="field"><label class="top" for="uEmail">Email</label><input type="email" id="uEmail" name="email" maxlength="128"></div>
+      <div class="field"><label class="top" for="uRole">Role</label>
+        <select id="uRole" name="role" class="input" style="width:100%"><option value="operator">operator</option><option value="supervisor">supervisor</option><option value="admin">admin</option></select></div>
+      <div class="field"><label class="top" for="uPass">Kata sandi awal</label><input type="password" id="uPass" name="password" minlength="8" required autocomplete="new-password"><div class="hint">Minimal 8 karakter.</div></div>
+    </div>
+    <div class="modal-foot"><span></span><div style="display:flex;gap:9.6px"><button type="button" class="btn-secondary" data-close>Batal</button><button type="submit" class="btn-primary">Simpan</button></div></div>
+  </form>
+</template>
+
+<template id="user-edit" data-width="440">
+  <div class="modal-head"><h3>Edit — <span data-text="username"></span></h3><button type="button" class="modal-close" data-close aria-label="Tutup">&times;</button></div>
+  <form method="post" action="@Url.Action("Update")">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id">
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:13.6px;">
+      <div class="field"><label class="top" for="eFull">Nama</label><input type="text" id="eFull" name="fullName" maxlength="128" required autofocus></div>
+      <div class="field"><label class="top" for="eEmail">Email</label><input type="email" id="eEmail" name="email" maxlength="128"></div>
+      <div class="field"><label class="top" for="eRole">Role</label>
+        <select id="eRole" name="role" class="input" style="width:100%"><option value="operator">operator</option><option value="supervisor">supervisor</option><option value="admin">admin</option></select></div>
+      <div class="field"><label class="top" for="ePass">Kata sandi baru</label><input type="password" id="ePass" name="password" minlength="8" autocomplete="new-password"><div class="hint">Kosongkan bila tidak diganti.</div></div>
+    </div>
+    <div class="modal-foot"><span></span><div style="display:flex;gap:9.6px"><button type="button" class="btn-secondary" data-close>Batal</button><button type="submit" class="btn-primary">Simpan</button></div></div>
+  </form>
+</template>

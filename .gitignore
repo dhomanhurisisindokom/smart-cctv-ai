@@ -2,3 +2,7 @@
 __pycache__/
 *.pyc
 *.tar.gz
+dist/
+web/src/bin/
+web/src/obj/
+web/src/packages/

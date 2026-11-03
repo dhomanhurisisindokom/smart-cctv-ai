@@ -1,0 +1,142 @@
+@model DetectionModel
+@{
+    ViewBag.Title = Model.Title;
+    ViewBag.Active = Model.Category;
+    var f = Model.Filter;
+    var p = Model.Page;
+    var mode = Model.Category;
+    var ranges = new[] { new[] { "today", "Hari ini" }, new[] { "24h", "24 Jam" }, new[] { "7d", "7 Hari" }, new[] { "30d", "30 Hari" }, new[] { "all", "Semua" }, new[] { "custom", "Pilih Tanggal" } };
+    Func<object, string> link = extra =>
+    {
+        var values = new RouteValueDictionary(new { range = f.Range, from = f.From.HasValue ? f.From.Value.ToString("yyyy-MM-dd") : null, to = f.To.HasValue ? f.To.Value.ToString("yyyy-MM-dd") : null, camera = f.CameraId, label = f.Label, status = f.Status });
+        foreach (var kv in new RouteValueDictionary(extra)) { values[kv.Key] = kv.Value; }
+        return Url.Action("Index", Model.Controller, values);
+    };
+    var csv = Url.Action("Csv", Model.Controller, new { range = f.Range, from = f.From.HasValue ? f.From.Value.ToString("yyyy-MM-dd") : null, to = f.To.HasValue ? f.To.Value.ToString("yyyy-MM-dd") : null, camera = f.CameraId, label = f.Label, status = f.Status });
+    var first = p.Total == 0 ? 0 : (p.Page - 1) * p.PageSize + 1;
+    var last = Math.Min(p.Total, p.Page * p.PageSize);
+}
+<div class="page-head">
+  <h2>@Model.Title</h2>
+  <p>@Model.Subtitle</p>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi"><div class="label">Kamera Terpantau</div><div class="value">@Model.Monitored<span class="unit"> / @Model.Cameras.Count</span></div></div>
+  <div class="kpi"><div class="label">Pelanggaran (24 Jam)</div><div class="value">@Fmt.Number(Model.Last24h)</div></div>
+  <div class="kpi"><div class="label">Kasus Terbuka</div><div class="value" style="color:@(mode == "apd" ? "#B57712" : "#B8021F");">@Model.OpenCases</div></div>
+</div>
+
+<div class="camera-grid">
+  @foreach (var c in Model.Cameras)
+  {
+    var on = c.AiEnabled && (mode == "apd" ? c.ApdEnabled : c.VehicleEnabled);
+    if (on)
+    {
+      <a class="camera-card" href="#" data-camera-card data-open-camera data-camera="@c.Id" data-mode="@mode" data-name="@c.Name" data-location="@c.Location">
+        <div class="feed">
+          <img alt="Tampilan AI @c.Name" data-stream data-camera="@c.Id" data-mode="@mode">
+          <span class="live">LIVE</span>
+          <span class="expand"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg></span>
+          <span class="msg">Menghubungkan ke layanan AI…</span>
+          <span class="stat">…</span>
+        </div>
+        <div class="camera-meta"><div class="name">@c.Name</div><div class="loc">@c.Location</div></div>
+      </a>
+    }
+    else
+    {
+      <div class="camera-card off">
+        <div class="feed"><span class="msg">@(string.IsNullOrEmpty(c.RtspUrl) ? "Kamera belum punya RTSP URL" : "Deteksi " + (mode == "apd" ? "APD" : "vehicle") + " nonaktif")</span></div>
+        <div class="camera-meta"><div class="name">@c.Name</div><div class="loc">@c.Location</div><span class="badge b-muted" style="margin-top:5.6px;">Deteksi @(mode == "apd" ? "APD" : "Vehicle") nonaktif</span></div>
+      </div>
+    }
+  }
+  @if (Model.Cameras.Count == 0)
+  {
+    <div class="panel empty" style="grid-column:1/-1">Belum ada kamera. Tambahkan di menu Pengaturan.</div>
+  }
+</div>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Riwayat Pelanggaran @(mode == "apd" ? "APD" : "Vehicle")</h2>
+    <a class="btn-secondary" href="@csv" style="text-decoration:none">Unduh CSV</a>
+  </div>
+  <form class="filters" method="get" action="@Url.Action("Index", Model.Controller)">
+    <div class="pills">
+      @foreach (var r in ranges)
+      {
+        <a class="range-pill@(f.Range == r[0] ? " active" : "")" style="text-decoration:none" href="@link(new { range = r[0], page = 1 })">@r[1]</a>
+      }
+    </div>
+    <input type="hidden" name="range" value="@f.Range">
+    @if (f.Range == "custom")
+    {
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <label for="from" style="font-size:13.1px;color:#61686F;">Dari</label>
+        <input id="from" name="from" type="date" class="date" value="@(f.From.HasValue ? f.From.Value.ToString("yyyy-MM-dd") : "")">
+        <label for="to" style="font-size:13.1px;color:#61686F;">s/d</label>
+        <input id="to" name="to" type="date" class="date" value="@(f.To.HasValue ? f.To.Value.ToString("yyyy-MM-dd") : "")">
+        <button type="submit" class="btn-secondary">Terapkan</button>
+      </div>
+    }
+    else
+    {
+      if (f.From.HasValue) { <input type="hidden" name="from" value="@f.From.Value.ToString("yyyy-MM-dd")"> }
+      if (f.To.HasValue) { <input type="hidden" name="to" value="@f.To.Value.ToString("yyyy-MM-dd")"> }
+    }
+    <div class="selects">
+      <select class="select" name="camera" aria-label="Kamera" onchange="this.form.submit()">
+        <option value="">Semua kamera</option>
+        @foreach (var c in Model.Cameras) { <option value="@c.Id" selected="@(f.CameraId == c.Id)">@c.Name</option> }
+      </select>
+      <select class="select" name="label" aria-label="Jenis" onchange="this.form.submit()">
+        <option value="">Semua jenis</option>
+        @foreach (var l in Model.Labels) { <option value="@l.Key" selected="@(f.Label == l.Key)">@l.Key (@l.Value)</option> }
+      </select>
+      <select class="select" name="status" aria-label="Status" onchange="this.form.submit()">
+        <option value="">Semua status</option>
+        <option value="alert" selected="@(f.Status == "alert")">Alert (belum jadi kasus)</option>
+        <option value="baru" selected="@(f.Status == "baru")">Kasus · Baru</option>
+        <option value="diproses" selected="@(f.Status == "diproses")">Kasus · Diproses</option>
+        <option value="selesai" selected="@(f.Status == "selesai")">Kasus · Selesai</option>
+      </select>
+    </div>
+  </form>
+  @if (p.Rows.Count == 0)
+  {
+    <div class="empty">Tidak ada pelanggaran untuk filter ini.</div>
+  }
+  else
+  {
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Waktu (WIB)</th><th>Kamera</th><th>Jenis</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      @foreach (var v in p.Rows)
+      {
+        <tr>
+          <td class="mono">@Fmt.Full(v.DetectedAt)</td>
+          <td>@v.CameraName</td>
+          <td>@v.Label</td>
+          <td><span class="badge @Fmt.StatusBadge(v.CaseStatus)">@(v.IsCase ? "Kasus · " + Fmt.StatusText(v.CaseStatus) : "Alert")</span></td>
+          <td><a class="link-btn" href="#" data-detail="@v.Id">Lihat Detail</a></td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+  }
+  <div class="pager">
+    <span>Menampilkan @first–@last dari @Fmt.Number(p.Total) pelanggaran · halaman @p.Page / @p.Pages</span>
+    <div style="display:flex;gap:8px;">
+      @if (p.Page > 1) { <a class="link-btn" href="@link(new { page = p.Page - 1 })">‹ Sebelumnya</a> } else { <button type="button" class="link-btn" disabled>‹ Sebelumnya</button> }
+      @if (p.Page < p.Pages) { <a class="link-btn" href="@link(new { page = p.Page + 1 })">Berikutnya ›</a> } else { <button type="button" class="link-btn" disabled>Berikutnya ›</button> }
+    </div>
+  </div>
+</section>
+
+@section Scripts {
+<script>window.MINI_AI = { url: '@ViewBag.AiUrl', port: '@ViewBag.AiPort', token: '@ViewBag.AiToken' };</script>
+}

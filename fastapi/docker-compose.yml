@@ -1,0 +1,64 @@
+# AI service: inference + video. Jalankan KETIGA, setelah ../sqlserver dan ../web:
+#   docker compose up -d --build                                              (CPU)
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build   (GPU)
+# Tidak mengakses database: kamera diambil dari web, pelanggaran dikirim ke web.
+name: smartcctv-mini-api
+
+services:
+  api:
+    build:
+      context: .
+      args:
+        BASE: "${BASE_IMAGE:-fs-smartcctv-pep-demo-live:bundle-gpu}"
+    image: smartcctv-mini-api:latest
+    container_name: smartcctv_mini_api
+    ports:
+      # Browsers open the MJPEG streams here directly (token signed by the web).
+      - "${API_BIND:-0.0.0.0}:${API_PORT:-8090}:8090"
+    environment:
+      MINI_WEB_URL: "http://smartcctv_mini_web:8080"
+      MINI_INGEST_TOKEN: "${MINI_INGEST_TOKEN:?Set MINI_INGEST_TOKEN in .env (same as ../web/.env)}"
+      MINI_STREAM_KEY: "${MINI_STREAM_KEY:?Set MINI_STREAM_KEY in .env (same as ../web/.env)}"
+      DETECTION_OUTBOX_DIR: /data/outbox
+      # First install only: cameras offered to the web while it has none (afterwards: menu Pengaturan).
+      CCTV_1_URL: "${CCTV_1_URL:-}"
+      CCTV_1_NAME: "${CCTV_1_NAME:-CCTV 1}"
+      CCTV_1_AI_ENABLED: "${CCTV_1_AI_ENABLED:-true}"
+      CCTV_1_APD_MASK: "${CCTV_1_APD_MASK:-}"
+      CCTV_1_APD_PENUTUP: "${CCTV_1_APD_PENUTUP:-}"
+      CCTV_1_VEHICLE_PROFILE: "${CCTV_1_VEHICLE_PROFILE:-}"
+      CCTV_2_URL: "${CCTV_2_URL:-}"
+      CCTV_2_NAME: "${CCTV_2_NAME:-CCTV 2}"
+      CCTV_2_AI_ENABLED: "${CCTV_2_AI_ENABLED:-true}"
+      CCTV_2_APD_MASK: "${CCTV_2_APD_MASK:-}"
+      CCTV_2_APD_PENUTUP: "${CCTV_2_APD_PENUTUP:-}"
+      CCTV_2_VEHICLE_PROFILE: "${CCTV_2_VEHICLE_PROFILE:-}"
+      # Inference cadence and capture behaviour.
+      CCTV_SAMPLE_SECONDS: "${CCTV_SAMPLE_SECONDS:-2}"
+      APD_SAMPLE_INTERVAL_SECONDS: "${APD_SAMPLE_INTERVAL_SECONDS:-0}"
+      CCTV_STALE_SECONDS: "${CCTV_STALE_SECONDS:-30}"
+      CCTV_RECONNECT_SECONDS: "${CCTV_RECONNECT_SECONDS:-5}"
+      CCTV_TIMEOUT_SECONDS: "${CCTV_TIMEOUT_SECONDS:-10}"
+      INFERENCE_DEVICE: "${INFERENCE_DEVICE:-cpu}"
+      OPENCV_FFMPEG_CAPTURE_OPTIONS: "rtsp_transport;tcp"
+      OPENCV_LOG_LEVEL: "SILENT"
+      OPENCV_FFMPEG_LOGLEVEL: "-8"
+    volumes:
+      # Violations not yet accepted by the web wait here (survives restarts).
+      - mini_outbox:/data/outbox
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=5)\""]
+      interval: 30s
+      timeout: 8s
+      retries: 3
+      start_period: 60s
+    # Also how new camera settings are applied: the service exits and is started again.
+    restart: unless-stopped
+
+volumes:
+  mini_outbox:
+
+networks:
+  default:
+    name: smartcctv_mini
+    external: true

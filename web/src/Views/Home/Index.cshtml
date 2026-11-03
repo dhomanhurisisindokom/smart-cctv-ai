@@ -1,0 +1,100 @@
+@model DashboardModel
+@{
+    ViewBag.Title = "Dashboard";
+    ViewBag.Active = "dashboard";
+}
+<div class="page-head">
+  <h2>Executive Dashboard</h2>
+  <p>Ringkasan seluruh area operasi.</p>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi"><div class="label">Total Kamera</div><div class="value">@Model.CameraCount</div></div>
+  <div class="kpi"><div class="label">Total Pelanggaran</div><div class="value">@Fmt.Number(Model.AllTime.Total)</div></div>
+  <div class="kpi"><div class="label">Kasus Terbuka</div><div class="value" style="color:#A3001A;">@Model.AllTime.OpenCases</div></div>
+  <div class="kpi"><div class="label">24 Jam Terakhir</div><div class="value">@Fmt.Number(Model.Last24h)</div></div>
+</div>
+
+<div class="cat-cards">
+  <div class="cat-card">
+    <div class="cat-head">
+      <div class="cat-left"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B57712" stroke-width="1.8" aria-hidden="true"><path d="M4 15.5V15a8 8 0 0 1 16 0v0.5"/><rect x="3" y="15.5" width="18" height="3" rx="1.2"/><path d="M12 6.5v2.2"/></svg> APD Detection</div>
+      <a href="@Url.Action("Index", "Apd")" style="font-size:12.8px;font-weight:600;">Lihat detail →</a>
+    </div>
+    <div class="nums">
+      <div><div class="n">@Model.ApdCameras</div><div class="l">kamera terpantau</div></div>
+      <div><div class="n" style="color:#B57712;">@Fmt.Number(Model.AllTime.Apd)</div><div class="l">pelanggaran tercatat</div></div>
+    </div>
+  </div>
+  <div class="cat-card">
+    <div class="cat-head">
+      <div class="cat-left"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B8021F" stroke-width="1.8" aria-hidden="true"><rect x="2" y="6" width="11" height="10" rx="1"/><path d="M13 10h4l3 3v3h-7z"/><circle cx="6.5" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></svg> Vehicle Violation</div>
+      <a href="@Url.Action("Index", "Vehicle")" style="font-size:12.8px;font-weight:600;">Lihat detail →</a>
+    </div>
+    <div class="nums">
+      <div><div class="n">@Model.VehicleCameras</div><div class="l">kamera terpantau</div></div>
+      <div><div class="n" style="color:#B8021F;">@Fmt.Number(Model.AllTime.Vehicle)</div><div class="l">pelanggaran tercatat</div></div>
+    </div>
+  </div>
+</div>
+
+<section class="panel" style="padding:20px 24px;margin-bottom:20px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap;">
+    <h2 style="font-size:14.7px;font-weight:600;margin:0;">Tren Pelanggaran Mingguan</h2>
+    <div style="display:flex;gap:19px;">
+      <span class="legend"><i style="background:#B57712;"></i>APD Detection</span>
+      <span class="legend"><i style="background:#B8021F;"></i>Vehicle Violation</span>
+    </div>
+  </div>
+  @Html.Raw(BarChart.Bars(Model.Week, 200, "Tren pelanggaran 7 hari terakhir per kategori"))
+</section>
+
+<section class="panel" style="margin-bottom:20px;">
+  <div class="panel-head"><h2>Area dengan Pelanggaran Terbanyak</h2></div>
+  @if (Model.Areas.Count == 0)
+  {
+    <div class="empty">Belum ada pelanggaran tercatat.</div>
+  }
+  else
+  {
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Kamera</th><th>Lokasi</th><th style="width:220px;">Jumlah</th></tr></thead>
+      <tbody>
+      @foreach (var a in Model.Areas)
+      {
+        <tr>
+          <td style="font-weight:600;">@a.Camera</td>
+          <td style="color:#61686F;">@a.Location</td>
+          <td>
+            @if (a.Vehicle > 0) { <span class="badge b-veh">Vehicle @Fmt.Number(a.Vehicle)</span> }
+            @if (a.Apd > 0) { <span class="badge b-apd">APD @Fmt.Number(a.Apd)</span> }
+          </td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+  }
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Live Alert Feed</h2>
+    <a href="@Url.Action("Index", "Cases")" style="font-size:12.8px;font-weight:600;">Lihat semua kasus →</a>
+  </div>
+  <div style="padding:8px 17.6px;">
+    @if (Model.Feed.Count == 0)
+    {
+      <div class="empty">Belum ada alert.</div>
+    }
+    @foreach (var v in Model.Feed)
+    {
+      <a class="feed-item" href="#" data-detail="@v.Id" style="text-decoration:none;color:inherit">
+        <span class="dot" style="background:@(v.Category == "apd" ? "#C4841F" : "#A3001A");"></span>
+        <div style="flex:1;"><span style="font-weight:600;font-size:13.9px;">@v.Label</span><span style="font-size:13.1px;color:#61686F;"> · @v.CameraName</span></div>
+        <div class="mono" style="font-size:12.5px;color:#61686F;">@Fmt.Short(v.DetectedAt)</div>
+      </a>
+    }
+  </div>
+</section>

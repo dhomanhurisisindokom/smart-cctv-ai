@@ -1,6 +1,6 @@
-# NVIDIA GPU host (A100): same cadence as the main project's GPU setup.
+# NVIDIA GPU host (A100): CUDA inference, sample every 0.12 s, GPU passed into the container.
 services:
-  mini:
+  api:
     environment:
       INFERENCE_DEVICE: cuda
       CCTV_SAMPLE_SECONDS: "${CCTV_SAMPLE_SECONDS_GPU:-0.12}"

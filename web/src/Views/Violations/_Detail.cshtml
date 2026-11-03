@@ -1,0 +1,80 @@
+@model Violation
+@{
+    var notes = (List<CaseNote>)ViewBag.Notes;
+    var users = (List<User>)ViewBag.Users;
+    var steps = new[] { new[] { "baru", "Baru" }, new[] { "diproses", "Diproses" }, new[] { "selesai", "Selesai" } };
+}
+<div class="modal-head">
+  <div>
+    <h3>@(Model.IsCase ? "Detail Kasus — " + Model.CaseCode : "Detail Alert")</h3>
+    <div class="sub">@Model.Label</div>
+  </div>
+  <button type="button" class="modal-close" data-close aria-label="Tutup">&times;</button>
+</div>
+<div class="modal-body" style="display:flex;flex-direction:column;">
+  <div class="evidence">
+    @if (Model.HasEvidence)
+    {
+      <img src="@Url.Action("Evidence", "Violations", new { id = Model.Id })" alt="Foto bukti @Model.Label">
+    }
+    else
+    {
+      <span>Tidak ada foto bukti</span>
+    }
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14.4px 24px;margin-bottom:20px;">
+    <div><div class="k">Kategori</div><div class="v">@Model.CategoryTitle</div></div>
+    <div><div class="k">Kamera</div><div class="v">@Model.CameraName</div></div>
+    <div><div class="k">Waktu Deteksi</div><div class="v">@Fmt.Full(Model.DetectedAt) WIB</div></div>
+    <div><div class="k">Confidence</div><div class="v mono" style="font-size:12.8px;">@Model.Confidence.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) · @Model.Severity</div></div>
+  </div>
+
+  @if (!Model.IsCase)
+  {
+    <form data-ajax method="post" action="@Url.Action("OpenCase", "Violations", new { id = Model.Id })" style="display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid #DEE2E6;padding-top:16px">
+      <span style="font-size:13.1px;color:#61686F">Alert ini belum ditangani sebagai kasus.</span>
+      <button type="submit" class="btn-primary">Jadikan Kasus</button>
+    </form>
+  }
+  else
+  {
+    <div style="margin-bottom:20px;">
+      <div class="lbl">Status Penanganan</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        @foreach (var s in steps)
+        {
+          <form data-ajax method="post" action="@Url.Action("SetStatus", "Violations", new { id = Model.Id })" class="inline">
+            <input type="hidden" name="status" value="@s[0]">
+            <button type="submit" class="step@(Model.CaseStatus == s[0] ? " on" : "")">@s[1]</button>
+          </form>
+        }
+      </div>
+    </div>
+    <form data-ajax method="post" action="@Url.Action("Assign", "Violations", new { id = Model.Id })" style="margin-bottom:20px;">
+      <label class="lbl" for="assign">Ditugaskan ke</label>
+      <select id="assign" name="userId" data-autosubmit class="input" style="width:100%;font-size:14.4px">
+        <option value="">Belum ditugaskan</option>
+        @foreach (var u in users) { <option value="@u.Id" selected="@(Model.AssignedUserId == u.Id)">@u.FullName</option> }
+      </select>
+    </form>
+    <div style="margin-bottom:20px;">
+      <div class="lbl">Catatan Investigasi</div>
+      @foreach (var n in notes)
+      {
+        <div class="note">
+          <div class="who">@n.UserName <span>· @Fmt.Full(n.CreatedAt) WIB</span></div>
+          <div class="txt">@n.Note</div>
+        </div>
+      }
+      @if (notes.Count == 0) { <div style="font-size:13.1px;color:#61686F">Belum ada catatan.</div> }
+      <form data-ajax method="post" action="@Url.Action("Note", "Violations", new { id = Model.Id })" style="display:flex;gap:8px;margin-top:12px;">
+        <label for="note" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Tambah catatan</label>
+        <input id="note" name="note" type="text" maxlength="1000" required placeholder="Tambah catatan..." class="input" style="flex:1">
+        <button type="submit" class="btn-primary">Kirim</button>
+      </form>
+    </div>
+    <form data-ajax data-confirm="Batalkan status kasus? Penugasan dan catatan ikut dihapus." method="post" action="@Url.Action("Cancel", "Violations", new { id = Model.Id })" style="display:flex;justify-content:flex-end;border-top:1px solid #DEE2E6;padding-top:16px;">
+      <button type="submit" class="btn-quiet">Batalkan status kasus (kembalikan jadi alert biasa)</button>
+    </form>
+  }
+</div>

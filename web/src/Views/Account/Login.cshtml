@@ -1,0 +1,48 @@
+@{ Layout = null; }
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Masuk — Smart CCTV AI</title>
+<link rel="icon" href="@Url.Content("~/Content/logo.jpg")">
+<link rel="stylesheet" href="@Url.Content("~/Content/styles.css")">
+</head>
+<body class="login" style="background:#FFFFFF">
+<div style="display:flex;flex-wrap:wrap;min-height:100vh;background:#FFFFFF;">
+  <div style="flex:1 1 480px;display:flex;align-items:center;padding:72px 64px;background:#F3F9EE;box-sizing:border-box;">
+    <div style="max-width:416px;">
+      <img src="@Url.Content("~/Content/logo.jpg")" alt="Pertamina EP" style="height:132px;width:auto;display:block;margin-bottom:56px;">
+      <h1 style="font-size:33.6px;font-weight:700;line-height:1.25;color:#171A1D;margin:0 0 14.4px;">Selamat Datang Kembali</h1>
+      <p style="font-size:16px;line-height:1.65;color:#61686F;margin:0;max-width:384px;">Masuk untuk memantau seluruh area operasi Anda secara real-time.</p>
+    </div>
+  </div>
+  <div style="flex:1 1 520px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 32px;box-sizing:border-box;background:#FFFFFF;">
+    @using (Html.BeginForm("Login", "Account", new { returnUrl = ViewBag.ReturnUrl }, FormMethod.Post, new { style = "width:100%;max-width:380px;" }))
+    {
+      @Html.AntiForgeryToken()
+      <h2 style="color:#171A1D;font-size:22.4px;font-weight:700;margin:0 0 24px;">Masuk ke akun Anda</h2>
+      if (ViewBag.Error != null)
+      {
+        <div class="err" role="alert">@ViewBag.Error</div>
+      }
+      <div class="field">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" value="@ViewBag.Username" autocomplete="username" required autofocus>
+      </div>
+      <div class="field">
+        <label for="password">Kata sandi</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin:-4.8px 0 20.8px;">
+        <a href="#lupa" onclick="alert('Hubungi admin platform untuk mengatur ulang kata sandi.');return false;" style="font-weight:600;font-size:13.6px;text-decoration:none;color:#B8021F">Lupa Kata Sandi?</a>
+      </div>
+      <button type="submit" class="submit">Masuk</button>
+    }
+    <div style="width:100%;max-width:380px;margin-top:40px;display:flex;gap:8px;font-size:12.5px;color:#8A9199;flex-wrap:wrap">
+      <span>Smart CCTV AI</span><span>·</span><span>Copyright © @DateTime.Now.Year Pertamina EP. All Rights Reserved</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

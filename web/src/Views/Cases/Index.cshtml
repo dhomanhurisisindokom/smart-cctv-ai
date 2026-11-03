@@ -1,0 +1,56 @@
+@model PagedViolations
+@{
+    ViewBag.Title = "Case Violation";
+    ViewBag.Active = "cases";
+    var tab = (string)ViewBag.Tab;
+    var tabs = new[] { new[] { "all", "Semua" }, new[] { "apd", "APD" }, new[] { "vehicle", "Vehicle" }, new[] { "open", "Kasus Terbuka" } };
+}
+<div class="page-head">
+  <h2>Case Violation</h2>
+  <p>Semua kasus pelanggaran lintas kategori — status penanganan &amp; penanggung jawab.</p>
+</div>
+<div class="tabs">
+  @foreach (var t in tabs)
+  {
+    <a class="tab@(tab == t[0] ? " active" : "")" style="text-decoration:none" href="@Url.Action("Index", new { tab = t[0] })">@t[1]</a>
+  }
+</div>
+<section class="panel">
+  @if (Model.Rows.Count == 0)
+  {
+    <div class="empty">Belum ada kasus. Buka alert di halaman APD / Vehicle lalu pilih "Jadikan Kasus".</div>
+  }
+  else
+  {
+  <div class="table-wrap">
+    <table style="min-width:720px">
+      <thead><tr><th>Case ID</th><th>Waktu (WIB)</th><th>Kategori</th><th>Kamera</th><th>Jenis</th><th>Status</th><th>Ditugaskan</th><th></th></tr></thead>
+      <tbody>
+      @foreach (var v in Model.Rows)
+      {
+        <tr>
+          <td class="mono" style="font-weight:600;">@v.CaseCode</td>
+          <td class="mono">@Fmt.Short(v.DetectedAt)</td>
+          <td>@v.CategoryLabel</td>
+          <td>@v.CameraName</td>
+          <td>@v.Label</td>
+          <td><span class="badge @Fmt.StatusBadge(v.CaseStatus)">@Fmt.StatusText(v.CaseStatus)</span></td>
+          <td style="color:#61686F;">@(v.AssignedName ?? "Belum ditugaskan")</td>
+          <td><a class="link-btn" href="#" data-detail="@v.Id">Lihat Detail</a></td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+  }
+  @if (Model.Pages > 1)
+  {
+  <div class="pager">
+    <span>Halaman @Model.Page / @Model.Pages · @Model.Total kasus</span>
+    <div style="display:flex;gap:8px;">
+      @if (Model.Page > 1) { <a class="link-btn" href="@Url.Action("Index", new { tab, page = Model.Page - 1 })">‹ Sebelumnya</a> }
+      @if (Model.Page < Model.Pages) { <a class="link-btn" href="@Url.Action("Index", new { tab, page = Model.Page + 1 })">Berikutnya ›</a> }
+    </div>
+  </div>
+  }
+</section>

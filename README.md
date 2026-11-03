@@ -1,37 +1,68 @@
 # Smart CCTV Mini
 
-Web inference sederhana: dua model dari project utama (APD detection v2 dan vehicle violation)
-dijalankan pada 2 kamera dan hasilnya ditampilkan langsung di browser (MJPEG). Tanpa database,
-snapshot, login, atau fitur lain.
+Deteksi **APD (v2)** dan **vehicle violation** pada 2 kamera, dengan aplikasi web sesuai mockup:
+dashboard, halaman APD/Vehicle, kasus, laporan, pengaturan kamera, dan manajemen user.
 
-AI-nya **sama persis** dengan project utama: image dibangun di atas image live-inference project
-utama (`fs-smartcctv-pep-demo-live:bundle-gpu`), memakai `app.demo_live.runtime` dan `app.ai`
-tanpa perubahan. Yang ditambahkan hanya folder `mini/` (FastAPI + satu halaman HTML).
+Tiga bagian, masing-masing di folder sendiri dengan `docker-compose.yml` sendiri:
 
-## Jalankan di server A100 (offline)
+| Folder | Isi | Port |
+|---|---|---|
+| `sqlserver/` | SQL Server 2022 + migration skema (Alembic) | 127.0.0.1:14330 |
+| `web/` | Web ASP.NET MVC 5 (.NET Framework 4.8, berjalan di Mono). Satu-satunya yang mengakses database | 8091 |
+| `fastapi/` | Layanan AI: inferensi + stream video MJPEG | 8090 |
 
-Syarat: bundle project utama sudah di-install (image `fs-smartcctv-pep-demo-live:bundle-gpu` ada).
+Desain lengkap ada di [ARSITEKTUR.md](ARSITEKTUR.md).
 
-```bash
-cd ~/smart-cctv-mini
-cp ~/smart-cctv-bundle/.env .env      # nama variabel kamera sama
-sudo docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
-```
+## Jalankan (satu per satu, urut)
 
-Buka `http://<ip-server>:8090`.
-
-Kamera yang hanya menerima satu sesi bisa "direbut" bila live-inference project utama juga jalan;
-hentikan dulu bila perlu: `sudo docker stop smartcctv_demo_live`.
-
-## Jalankan di laptop (CPU)
+Sekali saja, buat `.env` ketiga folder dengan rahasia yang saling cocok:
 
 ```bash
-cp .env.example .env    # isi CCTV_1_URL / CCTV_2_URL
-docker compose up -d --build
+sh deploy/init-env.sh
 ```
 
-## Endpoint
+Skrip mencetak password admin web awal. Kamera bisa langsung diisi di `fastapi/.env`
+(`CCTV_1_URL`, ...), atau ditambahkan nanti lewat menu **Pengaturan**.
 
-- `/` halaman web
-- `/stream/{1|2}/{apd|vehicle}` MJPEG hasil deteksi
-- `/api/status` status model dan kamera
+```bash
+# 1. Database + migration (membuat jaringan Docker `smartcctv_mini`)
+cd sqlserver && docker compose up -d && cd ..
+
+# 2. Web
+cd web && docker compose up -d && cd ..
+
+# 3. AI. GPU (server A100):
+cd fastapi && docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build && cd ..
+#    tanpa GPU (CPU):
+# cd fastapi && docker compose up -d --build && cd ..
+```
+
+Buka `http://<ip-server>:8091` dan login sebagai `admin`. Model AI siap ±1–2 menit setelah
+layanan `fastapi` menyala.
+
+Cek hasil migration: `docker logs smartcctv_mini_migrate`. Baris terakhir harus "Akun admin awal
+dibuat" (instalasi pertama) atau "Users sudah ada".
+
+## Server A100 (offline)
+
+Server tidak punya internet. Image `web` dan `migrate` di-build di laptop, lalu dikirim:
+
+```bash
+# di laptop
+(cd sqlserver && docker compose build) && (cd web && docker compose build)
+sh deploy/make-bundle.sh          # -> dist/mini-images.tar.gz + dist/smart-cctv-mini-src.tar.gz
+```
+
+Di server: `sudo docker load -i mini-images.tar.gz`, ekstrak source, lalu jalankan tiga langkah di atas.
+Image SQL Server (`mcr.microsoft.com/mssql/server:2022-latest`) dan image AI
+(`fs-smartcctv-pep-demo-live:bundle-gpu`) sudah ada di server. `fastapi` di-build offline di atas
+image AI itu.
+
+## Perintah lain
+
+| Keperluan | Perintah (di folder terkait) |
+|---|---|
+| Log | `docker logs -f smartcctv_mini_web` / `smartcctv_mini_api` / `smartcctv_mini_sql` |
+| Hentikan | `docker compose down` (data DB tetap di volume) |
+| Migration baru | tambah file di `sqlserver/migrate/migrations/versions/`, lalu `cd sqlserver && docker compose up -d --build migrate` |
+| Ubah kamera | menu **Pengaturan**. AI memuat ulang sendiri dalam ±15 dtk |
