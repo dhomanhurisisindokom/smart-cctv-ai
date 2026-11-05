@@ -58,6 +58,37 @@ Image SQL Server (`mcr.microsoft.com/mssql/server:2022-latest`) dan image AI
 (`fs-smartcctv-pep-demo-live:bundle-gpu`) sudah ada di server. `fastapi` di-build offline di atas
 image AI itu.
 
+## Pengaturan di .env
+
+**Database** (`web/.env`): `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`.
+- Defaultnya container `sqlserver`.
+- Untuk SQL Server lain, isi juga `DB_*` di `sqlserver/.env` supaya migration dijalankan ke server
+  itu: `cd sqlserver && docker compose up -d migrate`.
+
+**Foto bukti** (`web/.env`):
+- `EVIDENCE_STORAGE=db` (default): foto disimpan di database.
+- Ke NAS (SMB): buka komentar baris berikut dan isi `NAS_*`:
+
+```
+COMPOSE_PATH_SEPARATOR=:
+COMPOSE_FILE=docker-compose.yml:docker-compose.nas.yml
+NAS_SHARE=//r2folder.pep.pertamina.com/share/BS/IT/IT_DAMA/_All/14_PROJECT/CCTV AI/CCTV_EVIDENCE
+NAS_ADDR=10.12.2.90
+NAS_DOMAIN=PERTAMINA
+NAS_USER=<akun dengan hak TULIS ke folder itu>
+NAS_PASSWORD=<password akun itu>
+```
+
+Lalu jalankan `cd web && docker compose up -d`. Cek dengan `curl http://127.0.0.1:8091/api/health`,
+hasilnya harus `"evidence":"file ok"`.
+
+Ketentuan:
+- Foto tersimpan di NAS sebagai `yyyy/MM/dd/<kategori>-cam<n>-<jam>-<id>.jpg`.
+- Bila NAS tidak bisa ditulisi, event tertahan di antrean AI dan dikirim ulang otomatis.
+- Mengganti `NAS_*` setelahnya:
+  `docker compose down && docker volume rm smartcctv_mini_evidence_nas`, lalu `up -d` lagi.
+- Foto lama yang sudah ada di database tetap tampil.
+
 ## Perintah lain
 
 | Keperluan | Perintah (di folder terkait) |
