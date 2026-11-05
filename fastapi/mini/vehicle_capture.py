@@ -49,11 +49,12 @@ def install():
         detections = original(self, frame_bgr, timestamp_s)
         test = (TEST and self.cfg.evidence.camera not in _tested and len(self._records) > 1
                 and self._records[-1]["time_s"] - self._records[0]["time_s"] >= 35)
-        if detections or test:
+        suppressed = getattr(self, "last_suppressed", None) or []
+        if detections or suppressed or test:
             try:
                 if test:
                     _tested.add(self.cfg.evidence.camera)
-                _offer(self, detections)
+                _offer(self, detections, suppressed)
             except Exception as exc:  # recording must never break inference
                 status["error"] = "%s: %s" % (type(exc).__name__, exc)
         return detections
@@ -63,7 +64,7 @@ def install():
     threading.Thread(target=_writer, daemon=True, name="vehicle-capture").start()
 
 
-def _offer(pipeline, detections):
+def _offer(pipeline, detections, suppressed=()):
     camera = pipeline.cfg.evidence.camera
     now = time.time()
     with _lock:
@@ -79,6 +80,8 @@ def _offer(pipeline, detections):
         "ignore_zones": pipeline.cfg.rules.ignore_zones, "sample_interval_s": pipeline.sample_interval,
         "detections": [{"label": d.label, "severity": d.severity, "confidence": d.confidence, "box": list(d.box)}
                        for d in detections],
+        # Alarms dropped by vehicle_filters (e.g. rider_veto), kept for review.
+        "suppressed": list(suppressed),
         "decided_frame": records[-1]["frame"] if records else None,
         "records": records,
     }

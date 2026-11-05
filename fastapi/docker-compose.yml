@@ -47,6 +47,8 @@ services:
       VEHICLE_CAPTURE: "${VEHICLE_CAPTURE:-true}"
       VEHICLE_CAPTURE_DIR: /data/vehicle-captures
       VEHICLE_CAPTURE_MAX: "${VEHICLE_CAPTURE_MAX:-100}"
+      # Veto pengendara motor: orang di atas motor yang terdeteksi bukan penumpang bak.
+      VEHICLE_RIDER_VETO: "${VEHICLE_RIDER_VETO:-true}"
     volumes:
       # Violations not yet accepted by the web wait here (survives restarts).
       - mini_outbox:/data/outbox
