@@ -6,3 +6,4 @@ dist/
 web/src/bin/
 web/src/obj/
 web/src/packages/
+fastapi/vehicle-captures/

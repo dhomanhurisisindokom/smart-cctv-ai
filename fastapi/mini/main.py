@@ -115,6 +115,8 @@ class Service:
             return
         self.error = None
         self.apply(self.cameras)
+        from . import vehicle_capture
+        vehicle_capture.install()  # records vehicle alerts for analysis; decisions unchanged
         from app.demo_live.runtime import Runtime  # reads the CCTV_* values set above
         self.runtime = Runtime()
         self.runtime.start()
@@ -175,7 +177,13 @@ def root():
 def health():
     runtime = service.runtime
     return {"state": service.state, "error": service.error or (runtime.model_error if runtime else None),
-            "models": None if runtime is None else runtime.models_ready}
+            "models": None if runtime is None else runtime.models_ready,
+            "vehicle_capture": vehicle_capture_status()}
+
+
+def vehicle_capture_status():
+    from . import vehicle_capture
+    return vehicle_capture.status
 
 
 @app.get("/api/status")

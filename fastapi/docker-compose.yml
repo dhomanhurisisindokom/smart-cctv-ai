@@ -43,9 +43,15 @@ services:
       OPENCV_FFMPEG_CAPTURE_OPTIONS: "rtsp_transport;tcp"
       OPENCV_LOG_LEVEL: "SILENT"
       OPENCV_FFMPEG_LOGLEVEL: "-8"
+      # Perekam bukti vehicle (frame mentah + deteksi 60 dtk terakhir) untuk analisis false positive.
+      VEHICLE_CAPTURE: "${VEHICLE_CAPTURE:-true}"
+      VEHICLE_CAPTURE_DIR: /data/vehicle-captures
+      VEHICLE_CAPTURE_MAX: "${VEHICLE_CAPTURE_MAX:-100}"
     volumes:
       # Violations not yet accepted by the web wait here (survives restarts).
       - mini_outbox:/data/outbox
+      # Folder biasa di samping compose ini supaya rekaman mudah disalin.
+      - ./vehicle-captures:/data/vehicle-captures
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=5)\""]
       interval: 30s
