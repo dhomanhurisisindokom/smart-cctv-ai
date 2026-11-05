@@ -13,8 +13,19 @@ ADMIN="Admin-$(rand 6)!7b"
 INGEST=$(rand 32)
 STREAM=$(rand 32)
 umask 077
-printf 'MSSQL_SA_PASSWORD=%s\nMINI_DB=smartcctv_mini\nMINI_ADMIN_USERNAME=admin\nMINI_ADMIN_PASSWORD=%s\n' "$SA" "$ADMIN" > sqlserver/.env
-printf 'MSSQL_SA_PASSWORD=%s\nMINI_DB=smartcctv_mini\nMINI_INGEST_TOKEN=%s\nMINI_STREAM_KEY=%s\n' "$SA" "$INGEST" "$STREAM" > web/.env
+printf 'MSSQL_SA_PASSWORD=%s\nDB_NAME=smartcctv_mini\nMINI_ADMIN_USERNAME=admin\nMINI_ADMIN_PASSWORD=%s\n' "$SA" "$ADMIN" > sqlserver/.env
+printf 'DB_HOST=sqlserver\nDB_PORT=1433\nDB_NAME=smartcctv_mini\nDB_USER=sa\nDB_PASSWORD=%s\nMINI_INGEST_TOKEN=%s\nMINI_STREAM_KEY=%s\n' "$SA" "$INGEST" "$STREAM" > web/.env
+cat >> web/.env <<'EOF'
+# Foto bukti: db | file. Ke NAS: buka komentar 3 baris COMPOSE_* dan isi NAS_* (lihat .env.example).
+EVIDENCE_STORAGE=db
+# COMPOSE_PATH_SEPARATOR=:
+# COMPOSE_FILE=docker-compose.yml:docker-compose.nas.yml
+# NAS_SHARE=//r2folder.pep.pertamina.com/share/BS/IT/IT_DAMA/_All/14_PROJECT/CCTV AI/CCTV_EVIDENCE
+# NAS_ADDR=10.12.2.90
+# NAS_DOMAIN=PERTAMINA
+# NAS_USER=
+# NAS_PASSWORD=
+EOF
 printf 'MINI_INGEST_TOKEN=%s\nMINI_STREAM_KEY=%s\n' "$INGEST" "$STREAM" > fastapi/.env
 if [ -n "${CAMERA_ENV:-}" ]; then
   grep -E '^CCTV_[12]_(URL|NAME|AI_ENABLED|APD_MASK|APD_PENUTUP|VEHICLE_PROFILE)=' "$CAMERA_ENV" >> fastapi/.env || true

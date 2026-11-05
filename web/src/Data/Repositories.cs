@@ -108,7 +108,7 @@ namespace MiniWeb.Data
         const string Select =
             "SELECT v.id, v.camera_id, v.camera_name, c.location, v.category, v.label, v.severity, v.confidence, v.detected_at, " +
             "v.case_status, v.case_opened_at, v.assigned_user_id, u.full_name AS assigned_name, " +
-            "CASE WHEN e.violation_id IS NULL THEN 0 ELSE 1 END AS has_evidence " +
+            "CASE WHEN e.violation_id IS NULL AND v.evidence_path IS NULL THEN 0 ELSE 1 END AS has_evidence " +
             "FROM violations v LEFT JOIN cameras c ON c.id = v.camera_id LEFT JOIN users u ON u.id = v.assigned_user_id " +
             "LEFT JOIN violation_evidence e ON e.violation_id = v.id ";
 
@@ -196,8 +196,11 @@ namespace MiniWeb.Data
 
         public static Violation ById(long id) { return Db.One(Select + "WHERE v.id = @id", Map, "@id", id); }
 
+        // From the evidence folder when the row has a path (EVIDENCE_STORAGE=file), else from the table.
         public static byte[] Evidence(long id)
         {
+            var path = Db.Scalar("SELECT evidence_path FROM violations WHERE id = @id", "@id", id) as string;
+            if (path != null) return EvidenceStore.Read(path);
             return Db.Scalar("SELECT jpeg FROM violation_evidence WHERE violation_id = @id", "@id", id) as byte[];
         }
 
@@ -241,9 +244,26 @@ namespace MiniWeb.Data
         }
 
         // Idempotent insert for the AI outbox: an existing event_key returns the existing id.
+        // With EVIDENCE_STORAGE=file the JPEG is written to the evidence folder first; if that fails
+        // the exception reaches the AI as a 5xx and its outbox retries later, so nothing is lost.
         public static long Ingest(string eventKey, int cameraId, string cameraName, string category, string label,
                                   string severity, double confidence, DateTime detectedAtUtc, byte[] jpeg)
         {
+            if (Config.EvidenceToFile)
+            {
+                var existing = Db.Scalar("SELECT id FROM violations WHERE event_key = @key", "@key", eventKey);
+                if (existing != null) return Convert.ToInt64(existing);
+                var path = EvidenceStore.Write(eventKey, cameraId, category, detectedAtUtc, jpeg);
+                return Convert.ToInt64(Db.Scalar(
+                    "SET XACT_ABORT ON; BEGIN TRAN; " +
+                    "DECLARE @id BIGINT = (SELECT id FROM violations WITH (UPDLOCK, HOLDLOCK) WHERE event_key = @key); " +
+                    "IF @id IS NULL BEGIN " +
+                    "  INSERT INTO violations (event_key, camera_id, camera_name, category, label, severity, confidence, detected_at, evidence_path) " +
+                    "  VALUES (@key, @cam, @name, @cat, @label, @sev, @conf, @at, @path); SET @id = SCOPE_IDENTITY(); " +
+                    "END; COMMIT; SELECT @id;",
+                    "@key", eventKey, "@cam", cameraId, "@name", cameraName, "@cat", category, "@label", label,
+                    "@sev", severity, "@conf", confidence, "@at", detectedAtUtc, "@path", path));
+            }
             const string sql =
                 "SET XACT_ABORT ON; BEGIN TRAN; " +
                 "DECLARE @id BIGINT = (SELECT id FROM violations WITH (UPDLOCK, HOLDLOCK) WHERE event_key = @key); " +

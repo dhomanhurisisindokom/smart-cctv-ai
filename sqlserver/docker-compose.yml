@@ -32,10 +32,13 @@ services:
     image: smartcctv-mini-migrate:latest
     container_name: smartcctv_mini_migrate
     environment:
-      DB_HOST: sqlserver
-      DB_USER: sa
-      DB_PASSWORD: "${MSSQL_SA_PASSWORD}"
-      DB_NAME: "${MINI_DB:-smartcctv_mini}"
+      # Migration target. Default = the sqlserver container above; set DB_* in .env to migrate
+      # another SQL Server instead (the login needs CREATE DATABASE on first install).
+      DB_HOST: "${DB_HOST:-sqlserver}"
+      DB_PORT: "${DB_PORT:-1433}"
+      DB_USER: "${DB_USER:-sa}"
+      DB_PASSWORD: "${DB_PASSWORD:-${MSSQL_SA_PASSWORD}}"
+      DB_NAME: "${DB_NAME:-${MINI_DB:-smartcctv_mini}}"
       # Only used when the users table is empty (first install).
       MINI_ADMIN_USERNAME: "${MINI_ADMIN_USERNAME:-admin}"
       MINI_ADMIN_PASSWORD: "${MINI_ADMIN_PASSWORD:?Set MINI_ADMIN_PASSWORD in .env}"

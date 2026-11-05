@@ -1,0 +1,19 @@
+# Foto bukti ke NAS (SMB/CIFS). Aktifkan di .env:
+#   COMPOSE_PATH_SEPARATOR=:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.nas.yml
+# Docker host me-mount share ini sebagai volume; butuh hak TULIS akun NAS_USER ke folder tersebut.
+# Setelah mengubah NAS_* : docker compose down && docker volume rm smartcctv_mini_evidence_nas
+services:
+  web:
+    environment:
+      EVIDENCE_STORAGE: file
+
+volumes:
+  evidence:
+    name: smartcctv_mini_evidence_nas
+    driver: local
+    driver_opts:
+      type: cifs
+      # //host/share/sub/folder (spasi boleh), mis. //r2folder.pep.pertamina.com/share/BS/.../CCTV_EVIDENCE
+      device: "${NAS_SHARE:?Set NAS_SHARE in .env}"
+      o: "addr=${NAS_ADDR:?Set NAS_ADDR in .env (IP or host of the NAS)},username=${NAS_USER:?Set NAS_USER in .env},password=${NAS_PASSWORD:?Set NAS_PASSWORD in .env},domain=${NAS_DOMAIN:-},vers=${NAS_SMB_VERSION:-3.0},uid=0,gid=0,file_mode=0640,dir_mode=0750,nobrl"

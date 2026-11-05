@@ -117,15 +117,26 @@ namespace MiniWeb.Controllers
                 return JsonStatus(200, new { event_key = key_, id = "skipped" });
 
             var label = str("label");
-            var id = Violations.Ingest(key_, cameraId, camera.Name, category, label.Length > 128 ? label.Substring(0, 128) : label,
-                str("severity").Length > 16 ? str("severity").Substring(0, 16) : str("severity"),
-                Math.Max(0, Math.Min(1, confidence)), capturedAt, jpeg);
+            long id;
+            try
+            {
+                id = Violations.Ingest(key_, cameraId, camera.Name, category, label.Length > 128 ? label.Substring(0, 128) : label,
+                    str("severity").Length > 16 ? str("severity").Substring(0, 16) : str("severity"),
+                    Math.Max(0, Math.Min(1, confidence)), capturedAt, jpeg);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                // Evidence folder (NAS) unreachable or read-only: 503 makes the AI outbox retry later.
+                return JsonStatus(503, new { error = "evidence storage unavailable" });
+            }
             return JsonStatus(201, new { event_key = key_, id });
         }
 
         public ActionResult Health()
         {
-            try { Db.Scalar("SELECT 1"); return JsonStatus(200, new { status = "ok" }); }
+            // Evidence folder problems are reported but do not fail the healthcheck: restarting
+            // the web would not fix a NAS permission, and pages keep working meanwhile.
+            try { Db.Scalar("SELECT 1"); return JsonStatus(200, new { status = "ok", evidence = EvidenceStore.Check() }); }
             catch (Exception) { return JsonStatus(503, new { status = "database unavailable" }); }
         }
     }

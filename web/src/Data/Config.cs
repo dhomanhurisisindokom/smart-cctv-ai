@@ -44,6 +44,15 @@ namespace MiniWeb.Data
         // Server-to-server AI address on the Docker network (camera status in Pengaturan).
         public static string AiInternalUrl { get { return Env("AI_INTERNAL_URL", "http://smartcctv_mini_api:8090"); } }
 
+        // Where evidence JPEGs go: "db" (table violation_evidence) or "file" (EVIDENCE_DIR,
+        // e.g. a NAS share mounted by docker-compose.nas.yml).
+        public static bool EvidenceToFile
+        {
+            get { return string.Equals(Env("EVIDENCE_STORAGE", "db"), "file", StringComparison.OrdinalIgnoreCase); }
+        }
+
+        public static string EvidenceDir { get { return Env("EVIDENCE_DIR", "/data/evidence"); } }
+
         public static readonly TimeSpan Wib = TimeSpan.FromHours(7);
     }
 }

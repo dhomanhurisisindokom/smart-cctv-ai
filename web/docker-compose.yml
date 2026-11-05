@@ -1,6 +1,7 @@
 # Web: ASP.NET MVC 5 (.NET Framework 4.8) on Mono. Jalankan KEDUA, setelah ../sqlserver:
-#   docker compose up -d --build
+#   docker compose up -d
 # Satu-satunya aplikasi yang membaca/menulis database. Video AI dibuka browser langsung dari ../fastapi.
+# Foto bukti ke NAS: lihat docker-compose.nas.yml (aktifkan lewat COMPOSE_FILE di .env).
 name: smartcctv-mini-web
 
 services:
@@ -9,18 +10,25 @@ services:
     image: smartcctv-mini-web:latest
     container_name: smartcctv_mini_web
     environment:
-      DB_HOST: sqlserver
-      DB_NAME: "${MINI_DB:-smartcctv_mini}"
-      DB_USER: sa
-      DB_PASSWORD: "${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env (same as ../sqlserver/.env)}"
+      # Database: default = container ../sqlserver di jaringan smartcctv_mini.
+      DB_HOST: "${DB_HOST:-sqlserver}"
+      DB_PORT: "${DB_PORT:-1433}"
+      DB_NAME: "${DB_NAME:-${MINI_DB:-smartcctv_mini}}"
+      DB_USER: "${DB_USER:-sa}"
+      DB_PASSWORD: "${DB_PASSWORD:-${MSSQL_SA_PASSWORD:?Set DB_PASSWORD in .env (sa: same as MSSQL_SA_PASSWORD in ../sqlserver/.env)}}"
       MINI_INGEST_TOKEN: "${MINI_INGEST_TOKEN:?Set MINI_INGEST_TOKEN in .env (same as ../fastapi/.env)}"
       MINI_STREAM_KEY: "${MINI_STREAM_KEY:?Set MINI_STREAM_KEY in .env (same as ../fastapi/.env)}"
+      # Foto bukti: db (tabel violation_evidence) | file (folder /data/evidence = volume di bawah).
+      EVIDENCE_STORAGE: "${EVIDENCE_STORAGE:-db}"
+      EVIDENCE_DIR: /data/evidence
       AI_PUBLIC_URL: "${AI_PUBLIC_URL:-}"
       AI_PUBLIC_PORT: "${AI_PUBLIC_PORT:-8090}"
       AI_INTERNAL_URL: "http://smartcctv_mini_api:8090"
       TZ: Asia/Jakarta
     ports:
       - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-8091}:8080"
+    volumes:
+      - evidence:/data/evidence
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS -m 5 http://127.0.0.1:8080/api/health > /dev/null || exit 1"]
       interval: 30s
@@ -28,6 +36,11 @@ services:
       retries: 3
       start_period: 120s
     restart: unless-stopped
+
+volumes:
+  # Local disk unless docker-compose.nas.yml replaces it with the NAS share.
+  evidence:
+    name: smartcctv_mini_evidence
 
 networks:
   default:
